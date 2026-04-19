@@ -4,6 +4,7 @@ const mongose = require("mongoose");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { default: mongoose } = require("mongoose");
+const cron = require("node-cron");
 
 require("dotenv").config();
 const URI = process.env.MONGODB_URI;
@@ -23,6 +24,7 @@ app.listen(PORT, () => {
 });
 
 const tokenSecret = process.env.TOKEN_SECRET;
+
 
 app.get("/", (req, res) => {
 	res.send(
@@ -46,6 +48,26 @@ app.get("/", (req, res) => {
 
 require("./models/userModel");
 const user = mongose.model("User");
+
+
+cron.schedule(
+	"0 0 * * *", // 12 midnight
+	async () => {
+		try {
+			console.log("Running daily keep-alive query...");
+
+			// Simple query to keep DB active
+			await user.findOne({}).lean();
+
+			console.log("MongoDB keep-alive success");
+		} catch (error) {
+			console.error("Keep-alive failed:", error);
+		}
+	},
+	{
+		timezone: "Asia/Manila",
+	},
+);
 
 function generateAccessToken(id) {
 	return jwt.sign(id, tokenSecret, { expiresIn: "43200s" });
